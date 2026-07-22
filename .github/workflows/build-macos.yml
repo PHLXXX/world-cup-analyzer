@@ -8,7 +8,7 @@ on:
     tags:
       - "v*"
     paths:
-      - "release/macos-buildkit-1.1.0.zip.b64.part*"
+      - "release/macos-buildkit-1.1.0.tar.gz.b64.part*"
       - ".github/workflows/build-macos.yml"
 
 jobs:
@@ -36,8 +36,8 @@ jobs:
             echo "APP_DIR=." >> "$GITHUB_ENV"
           else
             mkdir -p app
-            cat release/macos-buildkit-1.1.0.zip.b64.part* | tr -d '\r\n' | base64 -D > macos-buildkit.zip
-            unzip -q macos-buildkit.zip -d app
+            cat release/macos-buildkit-1.1.0.tar.gz.b64.part* | tr -d '\r\n' | base64 -D > macos-buildkit.tar.gz
+            tar -xzf macos-buildkit.tar.gz -C app
             echo "APP_DIR=app" >> "$GITHUB_ENV"
           fi
 
