@@ -1,0 +1,69 @@
+name: 构建 macOS 桌面版
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+    paths:
+      - "release/macos-buildkit-1.1.0.zip.b64.part*"
+      - ".github/workflows/build-macos.yml"
+
+jobs:
+  build-macos:
+    name: macOS ${{ matrix.arch }}
+    runs-on: macos-13
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - arm64
+          - x64
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - name: 获取项目代码
+        uses: actions/checkout@v4
+
+      - name: 准备项目目录
+        shell: bash
+        run: |
+          if [[ -f package.json ]]; then
+            echo "APP_DIR=." >> "$GITHUB_ENV"
+          else
+            mkdir -p app
+            cat release/macos-buildkit-1.1.0.zip.b64.part* | tr -d '\r\n' | base64 -D > macos-buildkit.zip
+            unzip -q macos-buildkit.zip -d app
+            echo "APP_DIR=app" >> "$GITHUB_ENV"
+          fi
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ env.APP_DIR }}/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci
+        working-directory: ${{ env.APP_DIR }}
+
+      - name: 运行自动测试
+        run: npm test
+        working-directory: ${{ env.APP_DIR }}
+
+      - name: 构建 macOS 安装包
+        run: npm run desktop:dist:mac -- --${{ matrix.arch }}
+        working-directory: ${{ env.APP_DIR }}
+
+      - name: 上传安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: 喷火龙五大联赛分析平台-macOS-${{ matrix.arch }}
+          path: |
+            ${{ env.APP_DIR }}/dist-desktop/*-${{ matrix.arch }}.dmg
+            ${{ env.APP_DIR }}/dist-desktop/*-${{ matrix.arch }}.zip
+          if-no-files-found: error
+          retention-days: 30
